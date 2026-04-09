@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Bot Proveedores Tecpetrol</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0D1117;
+    --bg2:       #161B22;
+    --bg3:       #21262D;
+    --border:    rgba(255,255,255,0.08);
+    --text:      #E6EDF3;
+    --muted:     #8B949E;
+    --accent:    #2F81F7;
+    --accent2:   #3FB950;
+    --accent3:   #F78166;
+    --accent4:   #D2A8FF;
+    --co:        #2F81F7;
+    --mx:        #3FB950;
+    --ec:        #E3B341;
+    --ar:        #8B949E;
+    --warn:      #E3B341;
+    --danger:    #F78166;
+    --radius:    12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .topbar-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); box-shadow: 0 0 8px var(--accent2); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .topbar-title { font-size: 13px; font-weight: 500; color: var(--text); }
+  .topbar-sub { font-size: 12px; color: var(--muted); }
+  .topbar-badge { font-family: 'DM Mono', monospace; font-size: 11px; background: var(--bg3); border: 1px solid var(--border); color: var(--muted); padding: 3px 10px; border-radius: 20px; }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 1280px; margin: 0 auto; padding: 2rem; }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin: 2.5rem 0 1rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+  .kpi-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+    transition: border-color .2s;
+  }
+  .kpi-card:hover { border-color: rgba(255,255,255,0.16); }
+  .kpi-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .kpi-card.ok::before   { background: var(--accent2); }
+  .kpi-card.warn::before { background: var(--warn); }
+  .kpi-card.crit::before { background: var(--danger); }
+  .kpi-card.info::before { background: var(--accent); }
+
+  .kpi-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 400; }
+  .kpi-value { font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 4px; letter-spacing: -0.5px; }
+  .kpi-sub { font-size: 11px; color: var(--muted); }
+  .kpi-badge {
+    display: inline-block; font-size: 10px; font-weight: 500;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 8px; border-radius: 20px; margin-top: 8px;
+  }
+  .badge-ok   { background: rgba(63,185,80,0.15);  color: #3FB950; }
+  .badge-warn { background: rgba(227,179,65,0.15); color: #E3B341; }
+  .badge-crit { background: rgba(247,129,102,0.15);color: #F78166; }
+  .badge-info { background: rgba(47,129,247,0.15); color: #2F81F7; }
+
+  /* ── CHART CARDS ── */
+  .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border-color .2s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.14); }
+  .card-full { grid-column: 1 / -1; }
+
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .card-sub   { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── COUNTRY BARS ── */
+  .country-list { display: flex; flex-direction: column; gap: 0; }
+  .country-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .country-row:last-child { border-bottom: none; }
+  .country-flag { font-size: 20px; width: 28px; text-align: center; }
+  .country-name { font-size: 13px; font-weight: 500; min-width: 90px; }
+  .country-bar-wrap { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .country-bar { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+  .country-nums { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); min-width: 110px; text-align: right; }
+
+  /* ── GAP TABLE ── */
+  .gap-grid { display: grid; gap: 8px; }
+  .gap-row {
+    display: grid; grid-template-columns: 2fr 100px 3fr;
+    align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid transparent;
+    font-size: 12px;
+  }
+  .gap-row.covered  { border-left-color: var(--accent2); }
+  .gap-row.partial  { border-left-color: var(--warn); }
+  .gap-row.missing  { border-left-color: var(--danger); }
+  .gap-row.new-req  { border-left-color: var(--accent); }
+  .gap-kpi   { font-weight: 500; color: var(--text); }
+  .gap-group { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .gap-status { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 20px; text-align: center; }
+  .s-covered { background: rgba(63,185,80,0.15);  color: #3FB950; }
+  .s-partial  { background: rgba(227,179,65,0.15); color: #E3B341; }
+  .s-missing  { background: rgba(247,129,102,0.15);color: #F78166; }
+  .s-new      { background: rgba(47,129,247,0.15); color: #2F81F7; }
+  .gap-desc { color: var(--muted); font-size: 11px; }
+
+  /* ── SPRINT TIMELINE ── */
+  .sprint-track { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-top: 4px; }
+  .sprint-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    position: relative;
+  }
+  .sprint-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+  .sprint-kpis  { font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; }
+  .sprint-desc  { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .sprint-acum  { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent2); margin-top: 8px; }
+  .sprint-bar   { height: 3px; background: var(--border); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+  .sprint-fill  { height: 100%; border-radius: 2px; background: var(--accent2); }
+
+  /* ── NOTE BOX ── */
+  .note {
+    background: rgba(47,129,247,0.08);
+    border: 1px solid rgba(47,129,247,0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 12px; color: var(--muted);
+    margin-top: 14px; line-height: 1.7;
+  }
+  .note code { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); background: rgba(47,129,247,0.12); padding: 1px 6px; border-radius: 4px; }
+
+  /* ── FOOTER ── */
+  .footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .footer-text { font-size: 11px; color: var(--muted); }
+
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .chart-grid-2, .chart-grid-3 { grid-template-columns: 1fr; }
+    .sprint-track { grid-template-columns: 1fr 1fr; }
+    .page { padding: 1rem; }
+    .gap-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-dot"></div>
+    <div>
+      <div class="topbar-title">Bot Proveedores — Tecpetrol</div>
+      <div class="topbar-sub">Auditoría Integral · Fase II</div>
+    </div>
+  </div>
+  <span class="topbar-badge">Oct 2025 – Mar 2026 · 1.718 sesiones</span>
+</div>
+
+<div class="page">
+
+  <!-- ══ KPIs GLOBALES ══ -->
+  <div class="section-label">resumen ejecutivo</div>
+  <div class="kpi-grid">
+    <div class="kpi-card ok">
+      <div class="kpi-label">Sesiones totales</div>
+      <div class="kpi-value">1.718</div>
+      <div class="kpi-sub">~286 por mes</div>
+      <span class="kpi-badge badge-ok">Estable</span>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-label">Usuarios únicos</div>
+      <div class="kpi-value">1.251</div>
+      <div class="kpi-sub">Base de proveedores activa</div>
+      <span class="kpi-badge badge-ok">Activo</span>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-label">Usuarios recurrentes</div>
+      <div class="kpi-value">21,3%</div>
+      <div class="kpi-sub">266 proveedores volvieron</div>
+      <span class="kpi-badge badge-ok">Positivo</span>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">Abandono temprano</div>
+      <div class="kpi-value">12%</div>
+      <div class="kpi-sub">207 sesiones con ≤1 msg</div>
+      <span class="kpi-badge badge-warn">Investigar</span>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">Mensajes bot / sesión</div>
+      <div class="kpi-value">12,2</div>
+      <div class="kpi-sub">Ratio 2,54x vs usuario</div>
+      <span class="kpi-badge badge-warn">Alto</span>
+    </div>
+    <div class="kpi-card info">
+      <div class="kpi-label">Mensajes usuario / sesión</div>
+      <div class="kpi-value">5,7</div>
+      <div class="kpi-sub">Interacción moderada</div>
+      <span class="kpi-badge badge-info">Normal</span>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">Sesiones con agente</div>
+      <div class="kpi-value">0%</div>
+      <div class="kpi-sub">Sin escalación disponible</div>
+      <span class="kpi-badge badge-warn">Sin dato</span>
+    </div>
+    <div class="kpi-card crit">
+      <div class="kpi-label">Tipificación válida</div>
+      <div class="kpi-value">0%</div>
+      <div class="kpi-sub">0 de 1.718 sesiones</div>
+      <span class="kpi-badge badge-crit">Crítico</span>
+    </div>
+  </div>
+
+  <!-- ══ VOLUMEN MENSUAL ══ -->
+  <div class="section-label">volumen mensual</div>
+  <div class="card">
+    <div class="card-title">Sesiones por mes</div>
+    <div class="card-sub">Oct 2025 – Mar 2026 · Webchat Botmaker</div>
+    <div style="position:relative;width:100%;height:240px;">
+      <canvas id="cMensual"></canvas>
+    </div>
+  </div>
+
+  <!-- ══ MÓDULO + HORA ══ -->
+  <div class="section-label">uso por módulo y horario</div>
+  <div class="chart-grid-2">
+    <div class="card">
+      <div class="card-title">Distribución por módulo</div>
+      <div class="card-sub">Funnels configurados · este año</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--co)"></div>Notas de Pedido · 331</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--mx)"></div>FC Pagos · 129</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--ec)"></div>Pres. Factura · 81</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent4)"></div>Perfil Prov. · 78</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--ar)"></div>Sin funnel · 1.099</div>
+      </div>
+      <div style="position:relative;width:100%;height:220px;">
+        <canvas id="cModulo"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Actividad por hora del día</div>
+      <div class="card-sub">Pico entre las 10–11hs · horario laboral AR</div>
+      <div style="position:relative;width:100%;height:220px;">
+        <canvas id="cHora"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CALIDAD ══ -->
+  <div class="section-label">calidad de sesiones</div>
+  <div class="chart-grid-2">
+    <div class="card">
+      <div class="card-title">Profundidad de sesión</div>
+      <div class="card-sub">Mensajes del usuario por sesión</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Abandono ≤1 msg · 207</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Normal 2–4 · 464</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--mx)"></div>Estándar 5–14 · 942</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent4)"></div>Atascados ≥15 · 105</div>
+      </div>
+      <div style="position:relative;width:100%;height:200px;">
+        <canvas id="cProfundidad"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Ratio mensajes bot vs usuario</div>
+      <div class="card-sub">Por mes · promedio de sesión</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--co)"></div>Bot (promedio 12,2)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--mx)"></div>Usuario (promedio 5,7)</div>
+      </div>
+      <div style="position:relative;width:100%;height:200px;">
+        <canvas id="cRatio"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAÍSES ══ -->
+  <div class="section-label">distribución por país</div>
+  <div class="chart-grid-2">
+    <div class="card">
+      <div class="card-title">Sesiones por país</div>
+      <div class="card-sub">CO + MX + EC confirmados · AR estimado · Oct 2025 – Mar 2026</div>
+      <div class="country-list">
+        <div class="country-row">
+          <div class="country-flag">🇦🇷</div>
+          <div class="country-name">Argentina<span style="font-size:10px;color:var(--muted)"> *est.</span></div>
+          <div class="country-bar-wrap"><div class="country-bar" style="background:var(--ar);width:100%"></div></div>
+          <div class="country-nums">~635 · ~37%</div>
+        </div>
+        <div class="country-row">
+          <div class="country-flag">🇨🇴</div>
+          <div class="country-name">Colombia</div>
+          <div class="country-bar-wrap"><div class="country-bar" style="background:var(--co);width:77.8%"></div></div>
+          <div class="country-nums">494 · 28,7%</div>
+        </div>
+        <div class="country-row">
+          <div class="country-flag">🇲🇽</div>
+          <div class="country-name">México</div>
+          <div class="country-bar-wrap"><div class="country-bar" style="background:var(--mx);width:71.5%"></div></div>
+          <div class="country-nums">454 · 26,4%</div>
+        </div>
+        <div class="country-row">
+          <div class="country-flag">🇪🇨</div>
+          <div class="country-name">Ecuador</div>
+          <div class="country-bar-wrap"><div class="country-bar" style="background:var(--ec);width:21.3%"></div></div>
+          <div class="country-nums">135 · 7,9%</div>
+        </div>
+      </div>
+      <div class="note">* Argentina no tiene tag activo aún. Los 635 sin tag se infieren por la bandeja de Botmaker. Implementar <code>user.set("pais_proveedor", user.get("webChatCountry"))</code> — 15 min.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Participación CO + MX + EC</div>
+      <div class="card-sub">1.083 sesiones taggeadas</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--co)"></div>Colombia 45,5%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--mx)"></div>México 41,8%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--ec)"></div>Ecuador 12,4%</div>
+      </div>
+      <div style="position:relative;width:100%;height:220px;">
+        <canvas id="cPaises"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ GAP FASE III ══ -->
+  <div class="section-label">gap analysis — requerimiento fase iii</div>
+  <div class="chart-grid-2">
+    <div class="card">
+      <div class="card-title">Cobertura de los 25 KPIs</div>
+      <div class="card-sub">Bot Fase II vs Requerimiento Fase III</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--mx)"></div>Cubiertos · 5 (20%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Parciales · 8 (32%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>No cubiertos · 9 (36%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--co)"></div>Nuevos reqs · 3 (12%)</div>
+      </div>
+      <div style="position:relative;width:100%;height:200px;">
+        <canvas id="cGap"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">KPIs habilitados por sprint</div>
+      <div class="card-sub">Proyección acumulada · 4 sprints (~3 meses)</div>
+      <div style="position:relative;width:100%;height:200px;">
+        <canvas id="cSprints"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ KPIs DETALLE ══ -->
+  <div class="section-label">estado de los 25 kpis</div>
+  <div class="card card-full">
+    <div class="card-title">Requerimiento Fase III — estado actual por KPI</div>
+    <div class="card-sub">Gap analysis completo</div>
+    <div class="gap-grid" id="gapTable"></div>
+  </div>
+
+  <!-- ══ SPRINTS ══ -->
+  <div class="section-label">plan de implementación</div>
+  <div class="sprint-track">
+    <div class="sprint-block">
+      <div class="sprint-label">Sprint 0 · Hoy</div>
+      <div class="sprint-kpis">+3</div>
+      <div class="sprint-desc">Capturar webChatCountry · Tipificación por módulo · Exportar ca_error · Credenciales a ENV</div>
+      <div class="sprint-acum">Acum: 3/25</div>
+      <div class="sprint-bar"><div class="sprint-fill" style="width:12%"></div></div>
+    </div>
+    <div class="sprint-block">
+      <div class="sprint-label">Sprint 1 · Sem 1–2</div>
+      <div class="sprint-kpis">+6</div>
+      <div class="sprint-desc">resultado_consulta · np_encontrada · cert_encontrado · CSAT 1–5 · trigger feedback · reintentos</div>
+      <div class="sprint-acum">Acum: 9/25</div>
+      <div class="sprint-bar"><div class="sprint-fill" style="width:36%"></div></div>
+    </div>
+    <div class="sprint-block">
+      <div class="sprint-label">Sprint 2 · Sem 3–4</div>
+      <div class="sprint-kpis">+5</div>
+      <div class="sprint-desc">Fallback global · nombre/cód SAP proveedor · FECHA_HORA_FIN · comentarios al modelo</div>
+      <div class="sprint-acum">Acum: 14/25</div>
+      <div class="sprint-bar"><div class="sprint-fill" style="width:56%"></div></div>
+    </div>
+    <div class="sprint-block">
+      <div class="sprint-label">Sprint 3 · Mes 2</div>
+      <div class="sprint-kpis">+0</div>
+      <div class="sprint-desc">Pipeline Botmaker → modelo de datos → Power BI · Dashboard pág. 1, 2, 4 · Diccionario KPIs</div>
+      <div class="sprint-acum">Acum: 14/25</div>
+      <div class="sprint-bar"><div class="sprint-fill" style="width:56%"></div></div>
+    </div>
+    <div class="sprint-block">
+      <div class="sprint-label">Sprint 4 · Mes 3</div>
+      <div class="sprint-kpis">+5</div>
+      <div class="sprint-desc">Clasificador IA · Dashboard pág. 3, 5, 6 · Uptime monitor · Tiempos por mensaje</div>
+      <div class="sprint-acum">Acum: 19/25</div>
+      <div class="sprint-bar"><div class="sprint-fill" style="width:76%"></div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-text">Auditoría Integral — Bot Proveedores Tecpetrol · Fase II · Marzo 2026</div>
+    <div class="footer-text" style="color:var(--muted)">Botmaker + SAP CPI · 1.718 sesiones analizadas</div>
+  </div>
+
+</div>
+
+<script>
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#8B949E';
+
+const grid = 'rgba(255,255,255,0.06)';
+
+// ── MENSUAL ──
+new Chart(document.getElementById('cMensual'), {
+  type: 'bar',
+  data: {
+    labels: ['Oct 2025','Nov 2025','Dic 2025','Ene 2026','Feb 2026','Mar 2026'],
+    datasets: [{
+      data: [319, 272, 299, 292, 223, 313],
+      backgroundColor: ['#2F81F7','#2F81F7','#2F81F7','#2F81F7','#F78166','#2F81F7'],
+      borderRadius: 6, borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + ' sesiones' },
+        backgroundColor: '#21262D', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#E6EDF3', bodyColor: '#8B949E' }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#8B949E' } },
+      y: { grid: { color: grid }, ticks: { color: '#8B949E' }, min: 0, max: 380 }
+    }
+  }
+});
+
+// ── MÓDULO ──
+new Chart(document.getElementById('cModulo'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Notas de Pedido','FC Pagos','Pres. Factura','Perfil Proveedor','Sin funnel'],
+    datasets: [{ data: [331, 129, 81, 78, 1099],
+      backgroundColor: ['#2F81F7','#3FB950','#E3B341','#D2A8FF','#444C56'],
+      borderWidth: 0, hoverOffset: 8 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '62%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' (' + Math.round(ctx.raw/17.18) + '%)' },
+        backgroundColor: '#21262D', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#E6EDF3', bodyColor: '#8B949E' }
+    }
+  }
+});
+
+// ── HORA ──
+new Chart(document.getElementById('cHora'), {
+  type: 'bar',
+  data: {
+    labels: ['7h','8h','9h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h','21h','22h'],
+    datasets: [{
+      data: [12, 62, 162, 187, 212, 145, 138, 162, 167, 140, 98, 72, 55, 38, 22, 15],
+      backgroundColor: ctx => {
+        const v = ctx.raw;
+        if(v>=200) return '#2F81F7';
+        if(v>=150) return '#4C95F8';
+        if(v>=100) return '#7AB3FA';
+        if(v>=50)  return '#A8CFFB';
+        return '#444C56';
+      },
+      borderRadius: 4, borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + ' sesiones aprox.' },
+        backgroundColor: '#21262D', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#E6EDF3', bodyColor: '#8B949E' }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#8B949E', autoSkip: false, maxRotation: 0, font: { size: 10 } } },
+      y: { display: false }
+    }
+  }
+});
+
+// ── PROFUNDIDAD ──
+new Chart(document.getElementById('cProfundidad'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Abandono ≤1 msg','Normal 2–4 msg','Estándar 5–14 msg','Atascados ≥15 msg'],
+    datasets: [{ data: [207, 464, 942, 105],
+      backgroundColor: ['#F78166','#E3B341','#3FB950','#D2A8FF'],
+      borderWidth: 0, hoverOffset: 8 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '58%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + ' sesiones (' + Math.round(ctx.raw/17.18) + '%)' },
+        backgroundColor: '#21262D', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#E6EDF3', bodyColor: '#8B949E' }
+    }
+  }
+});
+
+// ── RATIO ──
+new Chart(document.getElementById('cRatio'), {
+  type: 'line',
+  data: {
+    labels: ['Oct','Nov','Dic','Ene','Feb','Mar'],
+    datasets: [
+      { label: 'Bot', data: [12.0,12.3,12.1,12.4,12.0,12.2],
+        borderColor: '#2F81F7', backgroundColor: 'rgba(47,129,247,0.08)',
+        fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#2F81F7' },
+      { label: 'Usuario', data: [5.6,5.7,5.5,5.8,5.6,5.7],
+        borderColor: '#3FB950', backgroundColor: 'rgba(63,185,80,0.08)',
+        fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#3FB950' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + ' msg/ses' },
+        backgroundColor: '#21262D', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#E6EDF3', bodyColor: '#8B949E' }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#8B949E' } },
+      y: { grid: { color: grid }, ticks: { color: '#8B949E' }, min: 0, max: 16 }
+    }
+  }
+});
+
+// ── PAÍSES DONUT ──
+new Chart(document.getElementById('cPaises'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Colombia','México','Ecuador'],
+    datasets: [{ data: [494, 454, 135],
+      backgroundColor: ['#2F81F7','#3FB950','#E3B341'],
+      borderWidth: 0, hoverOffset: 8 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '60%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' (' + Math.round(ctx.raw/10.83) + '%)' },
+        backgroundColor: '#21262D', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#E6EDF3', bodyColor: '#8B949E' }
+    }
+  }
+});
+
+// ── GAP DONUT ──
+new Chart(document.getElementById('cGap'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Cubiertos','Parciales','No cubiertos','Nuevos reqs.'],
+    datasets: [{ data: [5, 8, 9, 3],
+      backgroundColor: ['#3FB950','#E3B341','#F78166','#2F81F7'],
+      borderWidth: 0, hoverOffset: 8 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '60%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' KPIs' },
+        backgroundColor: '#21262D', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#E6EDF3', bodyColor: '#8B949E' }
+    }
+  }
+});
+
+// ── SPRINTS ──
+new Chart(document.getElementById('cSprints'), {
+  type: 'bar',
+  data: {
+    labels: ['Sprint 0','Sprint 1','Sprint 2','Sprint 3','Sprint 4'],
+    datasets: [
+      { label: 'KPIs nuevos', data: [3, 6, 5, 0, 5],
+        backgroundColor: '#2F81F7', borderRadius: 4, borderSkipped: false },
+      { label: 'Acumulado', data: [3, 9, 14, 14, 19],
+        type: 'line', borderColor: '#3FB950', backgroundColor: 'transparent',
+        tension: 0.3, pointRadius: 5, pointBackgroundColor: '#3FB950',
+        borderWidth: 2, fill: false }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.raw + ' KPIs' },
+        backgroundColor: '#21262D', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#E6EDF3', bodyColor: '#8B949E' }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#8B949E' } },
+      y: { grid: { color: grid }, ticks: { color: '#8B949E' }, max: 25 }
+    }
+  }
+});
+
+// ── GAP TABLE ──
+const kpis = [
+  { n:'1', name:'Consultas Totales',           grupo:'Adopción',     st:'covered', sdesc:'CUBIERTO',     desc:'Dashboard Botmaker + TSV disponible. Conectar export diario a Power BI.' },
+  { n:'2', name:'Usuarios Únicos',             grupo:'Adopción',     st:'covered', sdesc:'CUBIERTO',     desc:'1.251 identificados. Incluir ID_PROVEEDOR cuando se capture.' },
+  { n:'3', name:'Consultas por Proveedor',     grupo:'Adopción',     st:'partial', sdesc:'PARCIAL',      desc:'Id de contacto disponible. Falta nombre y código SAP.' },
+  { n:'4', name:'Consultas por Región/País',   grupo:'Adopción',     st:'partial', sdesc:'PARCIAL',      desc:'${webChatCountry} disponible, no capturado aún. Implementación: 15 min.' },
+  { n:'5', name:'Frecuencia de uso',           grupo:'Adopción',     st:'covered', sdesc:'CUBIERTO',     desc:'21,3% recurrentes. Calculable desde TSV en Power BI.' },
+  { n:'6', name:'Tasa de resolución automática','grupo':'Eficiencia', st:'missing', sdesc:'NO CUBIERTO', desc:'No existe campo RESUELTO. Requiere variable resultado_consulta en cada CA.' },
+  { n:'7', name:'Tasa de derivación a humano', grupo:'Eficiencia',   st:'covered', sdesc:'CUBIERTO',     desc:'0 sesiones derivadas. Campo disponible en TSV.' },
+  { n:'8', name:'Tiempo promedio de respuesta',grupo:'Eficiencia',   st:'missing', sdesc:'NO CUBIERTO',  desc:'Requiere timestamps por mensaje. No disponible en export estándar.' },
+  { n:'9', name:'Tiempo promedio de resolución',grupo:'Eficiencia',  st:'partial', sdesc:'PARCIAL',      desc:'FECHA_INICIO disponible. FIN calculable desde último mensaje del bot.' },
+  { n:'10',name:'Fallback Rate',               grupo:'Eficiencia',   st:'missing', sdesc:'NO CUBIERTO',  desc:'No existe nodo de fallback en ningún flujo. Requiere desarrollo.' },
+  { n:'11',name:'CSAT / Calificación promedio',grupo:'Calidad',      st:'partial', sdesc:'PARCIAL',      desc:'Existe encuesta binaria S/N. Requiere cambio a escala 1-5.' },
+  { n:'12',name:'Tasa de respuesta con feedback',grupo:'Calidad',    st:'partial', sdesc:'PARCIAL',      desc:'Flujo de cierre existe pero solo se activa por inactividad (45 min).' },
+  { n:'13',name:'Tasa de abandono',            grupo:'Calidad',      st:'partial', sdesc:'PARCIAL',      desc:'207 sesiones (12%) con ≤1 msg detectadas. Falta definición formal.' },
+  { n:'14',name:'Reintentos',                  grupo:'Calidad',      st:'missing', sdesc:'NO CUBIERTO',  desc:'No existe contador. btnAgain existe pero no se loguea.' },
+  { n:'15',name:'% Consultas automatizadas',   grupo:'Negocio',      st:'missing', sdesc:'NO CUBIERTO',  desc:'Depende de KPI 6 (campo RESUELTO).' },
+  { n:'16',name:'Uso por tipo de consulta',    grupo:'Negocio',      st:'missing', sdesc:'NO CUBIERTO',  desc:'0% tipificación. Setear modulo_consultado al entrar a cada subflujo.' },
+  { n:'17',name:'Tasa de éxito NP',            grupo:'Negocio',      st:'missing', sdesc:'NO CUBIERTO',  desc:'getStatusNP procesa SAP pero no guarda si la NP fue encontrada.' },
+  { n:'18',name:'Tasa de éxito Certificados',  grupo:'Negocio',      st:'missing', sdesc:'NO CUBIERTO',  desc:'getCertificado no persiste resultado en variable de usuario.' },
+  { n:'19',name:'Top 5 consultas frecuentes',  grupo:'Inteligencia', st:'missing', sdesc:'NO CUBIERTO',  desc:'Requiere KPI 16 + clasificador de intención por IA.' },
+  { n:'20',name:'Consultas no resueltas',      grupo:'Inteligencia', st:'missing', sdesc:'NO CUBIERTO',  desc:'Depende de KPI 6 (campo RESUELTO).' },
+  { n:'21',name:'Nuevas consultas no clasificadas',grupo:'Inteligencia',st:'missing',sdesc:'NO CUBIERTO',desc:'Requiere KPI 10 (fallback) + clasificador de intención.' },
+  { n:'22',name:'Motivos de no resolución',    grupo:'Inteligencia', st:'missing', sdesc:'NO CUBIERTO',  desc:'ca_error existe pero no clasifica motivo de negocio.' },
+  { n:'23',name:'Uptime del bot',              grupo:'Técnico',      st:'new-req', sdesc:'NUEVO REQ.',   desc:'No analizado en auditoría. Requiere health check externo sobre SAP CPI.' },
+  { n:'24',name:'Errores técnicos',            grupo:'Técnico',      st:'partial', sdesc:'PARCIAL',      desc:'ca_error existe en todos los CAs. No se exporta ni centraliza.' },
+  { n:'25',name:'Caídas del sistema',          grupo:'Técnico',      st:'new-req', sdesc:'NUEVO REQ.',   desc:'Requiere monitoreo externo (Azure Monitor, Pingdom, etc.).' },
+];
+
+const statusClass = { 'covered':'s-covered','partial':'s-partial','missing':'s-missing','new-req':'s-new' };
+const rowClass    = { 'covered':'covered','partial':'partial','missing':'missing','new-req':'new-req' };
+
+document.getElementById('gapTable').innerHTML = kpis.map(k => `
+  <div class="gap-row ${rowClass[k.st]}">
+    <div><div class="gap-kpi">${k.n}. ${k.name}</div><div class="gap-group">${k.grupo}</div></div>
+    <div><span class="gap-status ${statusClass[k.st]}">${k.sdesc}</span></div>
+    <div class="gap-desc">${k.desc}</div>
+  </div>
+`).join('');
+</script>
+</body>
+</html>
